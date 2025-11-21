@@ -1,5 +1,0 @@
-/Users/afung/dev/desk-cube/api/.devenv/flake.json
-/Users/afung/dev/desk-cube/api/.devenv.flake.nix
-/Users/afung/dev/desk-cube/api/devenv.lock
-/Users/afung/dev/desk-cube/api/devenv.nix
-/Users/afung/dev/desk-cube/api/devenv.yaml
