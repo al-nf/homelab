@@ -1,5 +1,0 @@
-/Users/afung/dev/homelab/.devenv/flake.json
-/Users/afung/dev/homelab/.devenv.flake.nix
-/Users/afung/dev/homelab/devenv.lock
-/Users/afung/dev/homelab/devenv.nix
-/Users/afung/dev/homelab/devenv.yaml
