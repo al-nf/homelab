@@ -1,5 +1,5 @@
-/Users/afung/dev/desk-cube/.devenv/flake.json
-/Users/afung/dev/desk-cube/.devenv.flake.nix
-/Users/afung/dev/desk-cube/devenv.lock
-/Users/afung/dev/desk-cube/devenv.nix
-/Users/afung/dev/desk-cube/devenv.yaml
+/Users/afung/dev/homelab/.devenv/flake.json
+/Users/afung/dev/homelab/.devenv.flake.nix
+/Users/afung/dev/homelab/devenv.lock
+/Users/afung/dev/homelab/devenv.nix
+/Users/afung/dev/homelab/devenv.yaml
