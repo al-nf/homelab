@@ -3,12 +3,12 @@
     let
       version = "1.8.1";
 system = "aarch64-darwin";
-devenv_root = "/Users/afung/dev/desk-cube/api";
+devenv_root = "/Users/afung/dev/desk-cube";
 devenv_dotfile = ./.devenv;
 devenv_dotfile_string = ".devenv";
 container_name = null;
 devenv_tmpdir = "/var/folders/kl/8v0871g538b4bpzt5tyl1yk80000gn/T/";
-devenv_runtime = "/var/folders/kl/8v0871g538b4bpzt5tyl1yk80000gn/T/devenv-1be98ae";
+devenv_runtime = "/var/folders/kl/8v0871g538b4bpzt5tyl1yk80000gn/T/devenv-5af52b3";
 devenv_istesting = false;
 devenv_direnvrc_latest_version = 1;
 
@@ -26,12 +26,12 @@ devenv_direnvrc_latest_version = 1;
         let
           version = "1.8.1";
 system = "aarch64-darwin";
-devenv_root = "/Users/afung/dev/desk-cube/api";
+devenv_root = "/Users/afung/dev/desk-cube";
 devenv_dotfile = ./.devenv;
 devenv_dotfile_string = ".devenv";
 container_name = null;
 devenv_tmpdir = "/var/folders/kl/8v0871g538b4bpzt5tyl1yk80000gn/T/";
-devenv_runtime = "/var/folders/kl/8v0871g538b4bpzt5tyl1yk80000gn/T/devenv-1be98ae";
+devenv_runtime = "/var/folders/kl/8v0871g538b4bpzt5tyl1yk80000gn/T/devenv-5af52b3";
 devenv_istesting = false;
 devenv_direnvrc_latest_version = 1;
 
