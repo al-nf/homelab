@@ -23,6 +23,6 @@ func main() {
         go HandleGmail(w, r)
     })
 
-    log.Println("API running on :8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
+    log.Println("API running on :6767")
+    log.Fatal(http.ListenAndServe(":6767", nil))
 }
