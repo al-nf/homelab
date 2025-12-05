@@ -31,8 +31,7 @@ async def on_message(message):
 
         await message.channel.send("ping sent.")
         me = await client.fetch_user(723957574743097415)
-        #await me.send(f"**{message.author.global_name}** wants your attention!")
-        await me.send(f"<@{message.author.id}> wants your attention!")
+        await me.send(f"<@{message.author.id}> wants your attention: {message.content}")
 
 
 client.run(TOKEN)
