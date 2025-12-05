@@ -10,8 +10,7 @@ import (
 
 func sendFrame(payload []byte) error {
 	// SET LATER
-	socMAC := net.HardwareAddr{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	piMAC := net.HardwareAddr{0xb8, 0x27, 0xeb, 0x52, 0x77, 0xfb}
+	MAC := net.HardwareAddr{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 	iface, err := net.InterfaceByName("eth0")
 	if err != nil {
@@ -21,8 +20,7 @@ func sendFrame(payload []byte) error {
 
 	// build frame
 	f := &ethernet.Frame{
-		Destination: socMAC,
-		Source:      piMAC,
+		Destination: MAC,
 		EtherType:   0xcccc,
 		Payload:     payload,
 	}
@@ -43,13 +41,13 @@ func sendFrame(payload []byte) error {
 
 	// send frame
 	addr := &packet.Addr{
-		HardwareAddr: socMAC,
+		HardwareAddr: MAC,
 	}
 	if _, err := conn.WriteTo(frameBytes, addr); err != nil {
 		log.Printf("failed to send frame: %v", err)
 		return err
 	}
 
-	log.Printf("sent %d bytes to %s", len(frameBytes), socMAC.String())
+	log.Printf("sent %d bytes to %s", len(frameBytes), MAC.String())
 	return nil
 }
