@@ -1,0 +1,8 @@
+#!/bin/bash
+SESSION="dev"
+tmux has-session -t $SESSION 2>/dev/null
+if [ $? != 0 ]; then
+    tmux new-session -d -s $SESSION "devenv up"
+fi
+tmux attach -t $SESSION
+
