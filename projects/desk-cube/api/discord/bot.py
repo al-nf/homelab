@@ -30,6 +30,9 @@ async def on_message(message):
             print("Failed to POST:", e)
 
         await message.channel.send("ping sent.")
+        me = await client.fetch_user(723957574743097415)
+        await me.send(f"**{message.author}** wants your attention!")
+
 
 client.run(TOKEN)
 
