@@ -6,7 +6,6 @@ with open("secrets.json") as f:
     secrets = json.load(f)
 
 TOKEN = secrets["discord_token"]
-API_URL = secrets["api_url"]
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -26,7 +25,7 @@ async def on_message(message):
     if isinstance(message.channel, discord.DMChannel):
         # send a post
         try:
-            requests.post(API_URL)
+            requests.post("http://localhost:6767/discord")
         except Exception as e:
             print("Failed to POST:", e)
 
