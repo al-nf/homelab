@@ -27,12 +27,12 @@
     
     desk-cube-hub = {
       cwd = "projects/desk-cube/api/hub";
-      exec = "go run hub";
+      exec = "([ -x ./hub ] || go build) && ./hub";
     };
     
     wake-on-lan = {
       cwd = "services/wake-on-lan";
-      exec = "go run wolserver";
+      exec = "([ -x ./wolserver ] || go build) && ./wolserver";
     };
   };
 
