@@ -27,7 +27,7 @@
     
     desk-cube-hub = {
       cwd = "projects/desk-cube/api/hub";
-      exec = "([ -x ./hub ] || go build) && ./hub";
+      exec = "([ -x ./hub ] || go build) && sudo setcap cap_net_raw+ep ./hub && ./hub";
     };
     
     wake-on-lan = {

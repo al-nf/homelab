@@ -6,7 +6,6 @@ import (
 )
 
 func HandleSlack(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 }
 
 func HandleDiscord(w http.ResponseWriter, r *http.Request) {
@@ -15,9 +14,7 @@ func HandleDiscord(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func HandleGmail(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 }
