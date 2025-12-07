@@ -9,8 +9,7 @@ import (
 )
 
 func sendFrame(payload []byte) error {
-	// SET LATER
-	MAC := net.HardwareAddr{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	MAC := net.HardwareAddr{0x00, 0x18, 0x3E, 0x04, 0xEC, 0xF9}
 
 	iface, err := net.InterfaceByName("eth0")
 	if err != nil {
