@@ -1,0 +1,3 @@
+C:/Users/alanf/dev/desk-cube/board/vitis/ethernet-receiver/build/CMakeFiles/ethernet-receiver.elf.dir
+C:/Users/alanf/dev/desk-cube/board/vitis/ethernet-receiver/build/CMakeFiles/edit_cache.dir
+C:/Users/alanf/dev/desk-cube/board/vitis/ethernet-receiver/build/CMakeFiles/rebuild_cache.dir
