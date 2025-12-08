@@ -1,2 +1,28 @@
 .devenv/
 .devenv.flake.nix
+
+# Vivado temporary files
+*.jou
+*.log
+*.txt
+*.backup
+*.debug
+*.xsa
+.Xil/
+*.runs/
+*.cache/
+*.hw/
+*.sim/
+*.ip_user_files/
+*.gen/
+
+# Vitis temporary files
+_ide/
+.cache/
+build/
+compile_commands.json
+.metadata/
+.analytics/
+.wsdata/
+workspace_journal*.py
+RemoteSystemsTempFiles/

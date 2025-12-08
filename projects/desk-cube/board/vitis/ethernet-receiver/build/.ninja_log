@@ -1,9 +1,0 @@
-# ninja log v5
-345	627	7868627491041452	ethernet-receiver.elf	e7cd67e40053eb91
-34	203	7868627487679423	CMakeFiles/ethernet-receiver.elf.dir/platform.c.obj	6c97f0f949174126
-26	317	7868627488826890	CMakeFiles/ethernet-receiver.elf.dir/main.c.obj	649dd9403f5329aa
-21	171	7869391327307175	build.ninja	544e67685cf0fba4
-23	34	0	clean	80a872709f58d8c5
-41	344	7868627489097410	CMakeFiles/ethernet-receiver.elf.dir/init.c.obj	d569c43a919e1ca2
-79	563	7869391327307175	build.ninja	544e67685cf0fba4
-21	31	0	clean	80a872709f58d8c5
