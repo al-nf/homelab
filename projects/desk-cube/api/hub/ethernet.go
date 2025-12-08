@@ -9,7 +9,8 @@ import (
 )
 
 func sendFrame(payload []byte) error {
-	MAC := net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	dstMAC := net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	srcMAC := net.HardwareAddr{0xb8, 0x27, 0xeb, 0x52, 0x77, 0xfb}
 
 	iface, err := net.InterfaceByName("eth0")
 	if err != nil {
@@ -19,7 +20,8 @@ func sendFrame(payload []byte) error {
 
 	// build frame
 	f := &ethernet.Frame{
-		Destination: MAC,
+		Destination: dstMAC,
+		Source: 	 srcMAC,
 		EtherType:   0xcccc,
 		Payload:     payload,
 	}
