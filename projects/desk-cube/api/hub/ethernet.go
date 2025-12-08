@@ -42,13 +42,13 @@ func sendFrame(payload []byte) error {
 
 	// send frame
 	addr := &packet.Addr{
-		HardwareAddr: MAC,
+		HardwareAddr: dstMAC,
 	}
 	if _, err := conn.WriteTo(frameBytes, addr); err != nil {
 		log.Printf("failed to send frame: %v", err)
 		return err
 	}
 
-	log.Printf("sent %d bytes to %s", len(frameBytes), MAC.String())
+	log.Printf("sent %d bytes to %s", len(frameBytes), dstMAC.String())
 	return nil
 }
