@@ -1,0 +1,43 @@
+# Vitis Workspace - Build output directories
+/build/
+/export/
+
+# Object files and dependencies
+*.o
+*.d
+*.elf
+*.elf.size
+
+# Logs
+/logs/
+*.log
+
+# Lock files
+*.lock
+
+# Binary and boot files
+*.bin
+*.pdi
+*.bit
+
+# IDE specific files
+.vitisWorkspace.json
+_ide/logs/
+_ide/.wsdata/
+_ide/.peers.ini
+_ide/.vitisPlatformRepo.json
+_ide/workspace_journal*.py
+
+# Lopper generated files
+.rigel_lopper/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+build.ninja
+rules.ninja
+compile_commands.json
+
+# Compilation database copies
+vitis-comp.json

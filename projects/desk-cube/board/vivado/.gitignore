@@ -1,0 +1,50 @@
+# Vivado Build Directories
+.Xil/
+vivado.cache/
+vivado.gen/
+vivado.hw/
+vivado.ip_user_files/
+vivado.runs/
+vivado.sim/
+
+# Vivado Log Files
+*.jou
+*.log
+*.str
+*.debug
+
+# DFX Runtime
+dfx_runtime.txt
+
+# Hardware Export (regenerated from project)
+*.xsa
+*.hdf
+
+# Vivado GUI Settings
+.jobs/
+*.wdb
+*.wcfg
+
+# IP Core Generated Files
+*.dcp
+*.ltx
+
+# Synthesis and Implementation Reports
+*.rpt
+*.pb
+*.xml
+
+# Vivado Lock Files
+*.lck
+.lock
+
+# Block Design Generated Files
+vivado.srcs/**/bd/**/ip/
+vivado.srcs/**/bd/**/ui/
+vivado.srcs/**/bd/**/*.bda
+vivado.srcs/**/bd/**/*.xci
+vivado.srcs/**/bd/**/hdl/
+vivado.srcs/**/bd/**/sim/
+vivado.srcs/**/bd/**/synth/
+
+# Keep only the block design source file (.bd)

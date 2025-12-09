@@ -1,0 +1,30 @@
+# Application Build Artifacts
+/build/
+
+# Object files and dependencies
+*.o
+*.d
+*.elf
+*.elf.size
+
+# Lock files
+*.lock
+
+# Binary files
+*.bin
+
+# IDE generated files
+_ide/hwspec.checksum
+_ide/bitstream/
+_ide/psinit/
+_ide/launch.json
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+build.ninja
+compile_commands.json
+
+# Compilation database
+vitis-comp.json
