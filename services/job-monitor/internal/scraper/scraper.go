@@ -27,6 +27,8 @@ func For(ats db.ATSType) Scraper {
 		return &GreenhouseScraper{}
 	case db.ATSLever:
 		return &LeverScraper{}
+	case db.ATSAshby:
+		return &AshbyScraper{}
 	default:
 		panic(fmt.Sprintf("no scraper for ATS type %s", ats))
 	}
@@ -121,6 +123,48 @@ func (l *LeverScraper) Fetch(slug string) ([]Posting, error) {
         })
     }
     return postings, nil
+}
+
+// https://api.ashbyhq.com/posting-api/job-board/{slug}
+type AshbyScraper struct{}
+
+func (a *AshbyScraper) Fetch(slug string) ([]Posting, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	url := fmt.Sprintf("https://api.ashbyhq.com/posting-api/job-board/%s", slug)
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status %d for %s", resp.StatusCode, slug)
+	}
+	var res struct {
+		Jobs []struct {
+			ID string `json:"id"`
+			Title string `json:"title"`
+			JobPostingURL string `json:"jobPostingUrl"`
+			Location string `json:"locationName"`
+			PublishedAt string `json:"publishedAt"`
+		} `json:"jobPostings"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	var postings []Posting
+	for _, j := range res.Jobs {
+		postedAt, _ := time.Parse(time.RFC3339, j.PublishedAt)
+		postings = append(postings, Posting{
+			ExternalID: j.ID,
+			Title: j.Title,
+			URL: j.JobPostingURL,
+			Location: j.Location,
+			PostedAt: postedAt,
+		})
+	}
+	return postings, nil
 }
 
 // https://{slug}.wd5.myworkdayjobs.com

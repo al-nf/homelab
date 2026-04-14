@@ -11,6 +11,7 @@ type ATSType string
 const (
 	ATSGreenhouse ATSType = "greenhouse"
 	ATSLever      ATSType = "lever"
+	ATSAshby      ATSType = "Ashby"
 	ATSWorkday    ATSType = "workday"
 	ATSGeneric    ATSType = "generic"
 )
