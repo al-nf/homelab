@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS companies (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL,
     slug         TEXT NOT NULL,
-    ats_type     TEXT NOT NULL CHECK(ats_type IN ('greenhouse', 'lever', 'workday', 'generic')),
+    ats_type     TEXT NOT NULL CHECK(ats_type IN ('greenhouse', 'lever', 'ashby', 'apple', 'google', 'workday', 'generic')),
     last_checked DATETIME
 );
 
