@@ -181,6 +181,9 @@ func (a *AshbyScraper) Fetch(slug string) ([]Posting, error) {
 // https://{slug}.wd5.myworkdayjobs.com
 type WorkdayScraper struct{}
 
+// Narrow searchText keeps each crawl under Workday's ~2000-offset pagination cap.
+var workdayInternSearchTerms = []string{"intern", "internship"}
+
 func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
 	s := strings.TrimSpace(slug)
 	if s == "" {
@@ -191,7 +194,7 @@ func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
 	// Explicit CXS jobs API URL (paste from DevTools).
 	if strings.Contains(s, "/wday/cxs/") && strings.HasSuffix(s, "/jobs") &&
 		(strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")) {
-		postings, err := workdayFetchViaAPI(client, s)
+		postings, err := workdayFetchViaAPIMulti(client, s, workdayInternSearchTerms)
 		if err == nil && len(postings) > 0 {
 			return postings, nil
 		}
@@ -204,7 +207,7 @@ func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
 		endpoint, _ = resolveWorkdayJobsEndpointPlaywright(s)
 	}
 	if endpoint != "" {
-		postings, err := workdayFetchViaAPI(client, endpoint)
+		postings, err := workdayFetchViaAPIMulti(client, endpoint, workdayInternSearchTerms)
 		if err == nil && len(postings) > 0 {
 			return postings, nil
 		}
@@ -215,7 +218,30 @@ func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
 	return workdayFetchListingsPlaywright(s)
 }
 
-func workdayFetchViaAPI(client *http.Client, endpoint string) ([]Posting, error) {
+func workdayFetchViaAPIMulti(client *http.Client, endpoint string, terms []string) ([]Posting, error) {
+	if len(terms) == 0 {
+		terms = []string{""}
+	}
+	seen := make(map[string]Posting)
+	for _, term := range terms {
+		postings, err := workdayFetchViaAPI(client, endpoint, term)
+		if err != nil {
+			return nil, fmt.Errorf("workday search %q: %w", term, err)
+		}
+		for _, p := range postings {
+			if _, ok := seen[p.ExternalID]; !ok {
+				seen[p.ExternalID] = p
+			}
+		}
+	}
+	out := make([]Posting, 0, len(seen))
+	for _, p := range seen {
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+func workdayFetchViaAPI(client *http.Client, endpoint, searchText string) ([]Posting, error) {
 	var postings []Posting
 	limit := 20
 	offset := 0
@@ -225,7 +251,7 @@ func workdayFetchViaAPI(client *http.Client, endpoint string) ([]Posting, error)
 			"appliedFacets": map[string][]string{},
 			"limit":         limit,
 			"offset":        offset,
-			"searchText":    "",
+			"searchText":    searchText,
 		}
 		body, err := json.Marshal(payload)
 		if err != nil {
@@ -266,6 +292,9 @@ func workdayFetchViaAPI(client *http.Client, endpoint string) ([]Posting, error)
 		}
 		resp.Body.Close()
 		if len(res.JobPostings) == 0 {
+			if res.Total > 0 && offset < res.Total {
+				fmt.Printf("workday: pagination cap hit for %q at offset=%d total=%d; results truncated\n", searchText, offset, res.Total)
+			}
 			break
 		}
 

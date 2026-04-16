@@ -28,6 +28,7 @@ func main() {
 		"france", "paris", "singapore", "zurich", "switzerland",
 		"brussels", "belgium", "korea", "seoul", "shanghai", "shenzhen",
 		"suzhou", "minato", "linz", "pohang", "yokohama", "changsha",
+		"abuja", "united kingdom", "nairobi",
 	}
 	for {
 		companies, err := d.ListCompanies()
