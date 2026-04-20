@@ -25,23 +25,28 @@ type Scraper interface {
 	Fetch(slug string) ([]Posting, error)
 }
 
-// For returns the appropriate Scraper for the given ATS type.
-func For(ats db.ATSType) Scraper {
+// ErrUnsupportedATS is returned by For when no scraper is registered for the
+// given ATS type. Callers should typically log and skip the company.
+var ErrUnsupportedATS = fmt.Errorf("unsupported ATS type")
+
+// For returns the appropriate Scraper for the given ATS type, or
+// ErrUnsupportedATS if none is registered.
+func For(ats db.ATSType) (Scraper, error) {
 	switch ats {
 	case db.ATSGreenhouse:
-		return &GreenhouseScraper{}
+		return &GreenhouseScraper{}, nil
 	case db.ATSLever:
-		return &LeverScraper{}
+		return &LeverScraper{}, nil
 	case db.ATSAshby:
-		return &AshbyScraper{}
+		return &AshbyScraper{}, nil
 	case db.ATSApple:
-		return &AppleScraper{}
+		return &AppleScraper{}, nil
 	case db.ATSGoogle:
-		return &GoogleScraper{}
+		return &GoogleScraper{}, nil
 	case db.ATSWorkday:
-		return &WorkdayScraper{}
+		return &WorkdayScraper{}, nil
 	default:
-		panic(fmt.Sprintf("no scraper for ATS type %s", ats))
+		return nil, fmt.Errorf("%w: %s", ErrUnsupportedATS, ats)
 	}
 }
 

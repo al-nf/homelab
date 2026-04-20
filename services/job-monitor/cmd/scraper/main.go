@@ -37,7 +37,11 @@ func main() {
 		}
 
 		for _, company := range companies {
-			s := scraper.For(company.ATS)
+			s, err := scraper.For(company.ATS)
+			if err != nil {
+				log.Printf("skipping %s: %v", company.Slug, err)
+				continue
+			}
 			postings, err := s.Fetch(company.Slug)
 			if err != nil {
 				log.Printf("error fetching %s: %v", company.Slug, err)
