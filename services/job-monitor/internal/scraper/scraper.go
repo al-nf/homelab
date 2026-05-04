@@ -25,12 +25,8 @@ type Scraper interface {
 	Fetch(slug string) ([]Posting, error)
 }
 
-// ErrUnsupportedATS is returned by For when no scraper is registered for the
-// given ATS type. Callers should typically log and skip the company.
 var ErrUnsupportedATS = fmt.Errorf("unsupported ATS type")
 
-// For returns the appropriate Scraper for the given ATS type, or
-// ErrUnsupportedATS if none is registered.
 func For(ats db.ATSType) (Scraper, error) {
 	switch ats {
 	case db.ATSGreenhouse:
@@ -50,7 +46,6 @@ func For(ats db.ATSType) (Scraper, error) {
 	}
 }
 
-// https://boards-api.greenhouse.io/v1/boards/{slug}/jobs
 type GreenhouseScraper struct{}
 
 func (g *GreenhouseScraper) Fetch(slug string) ([]Posting, error) {
@@ -97,7 +92,6 @@ func (g *GreenhouseScraper) Fetch(slug string) ([]Posting, error) {
 	return postings, nil
 }
 
-// https://api.lever.co/v0/postings/{slug}?mode=json
 type LeverScraper struct{}
 
 func (l *LeverScraper) Fetch(slug string) ([]Posting, error) {
@@ -186,7 +180,6 @@ func (a *AshbyScraper) Fetch(slug string) ([]Posting, error) {
 // https://{slug}.wd5.myworkdayjobs.com
 type WorkdayScraper struct{}
 
-// Narrow searchText keeps each crawl under Workday's ~2000-offset pagination cap.
 var workdayInternSearchTerms = []string{"intern", "internship"}
 
 func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
@@ -196,7 +189,6 @@ func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
 	}
 	client := &http.Client{Timeout: 30 * time.Second}
 
-	// Explicit CXS jobs API URL (paste from DevTools).
 	if strings.Contains(s, "/wday/cxs/") && strings.HasSuffix(s, "/jobs") &&
 		(strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")) {
 		postings, err := workdayFetchViaAPIMulti(client, s, workdayInternSearchTerms)
@@ -218,8 +210,6 @@ func (w *WorkdayScraper) Fetch(slug string) ([]Posting, error) {
 		}
 	}
 
-	// Listing pages (e.g. https://intel.wd1.myworkdayjobs.com/External) render jobs in the DOM;
-	// CXS path is often not present in static HTML.
 	return workdayFetchListingsPlaywright(s)
 }
 
@@ -801,11 +791,8 @@ func (g *GoogleScraper) Fetch(slug string) ([]Posting, error) {
 	return postings, nil
 }
 
-// --- Generic ---
-// Fallback for companies with custom career pages.
-// Requires a per-company CSS selector config to locate job listing elements.
 type GenericScraper struct {
-	Selector string // CSS selector for job listing elements
+	Selector string
 }
 
 func (g *GenericScraper) Fetch(slug string) ([]Posting, error) {

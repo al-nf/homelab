@@ -10,13 +10,10 @@ import (
 	"bytes"
 )
 
-// Notifier sends new posting alerts.
 type Notifier interface {
 	Notify(company db.Company, postings []db.Posting) error
 }
 
-// WebhookNotifier sends a Discord embed via incoming webhook.
-// No bot token required.
 type WebhookNotifier struct {
 	WebhookURL string
 }

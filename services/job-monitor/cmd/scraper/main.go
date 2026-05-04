@@ -28,7 +28,11 @@ func main() {
 		"france", "paris", "singapore", "zurich", "switzerland",
 		"brussels", "belgium", "korea", "seoul", "shanghai", "shenzhen",
 		"suzhou", "minato", "linz", "pohang", "yokohama", "changsha",
-		"abuja", "united kingdom", "nairobi",
+		"abuja", "united kingdom", "nairobi", "panama", "queretaro",
+		"basel", "poland", "barcelona", "spain", "bulgaria", "nicaragua",
+		"lodz", "tel aviv", "gbp", "norway", "sweden", "chile", "netherlands",
+		"mexico", "reykjavik", "warsaw", "brazil", "united kingdom", "nz",
+		"new zealand",
 	}
 	for {
 		companies, err := d.ListCompanies()
@@ -71,6 +75,7 @@ func main() {
 					strings.Contains(t, "marketing") ||
 					strings.Contains(t, "customer") ||
 					strings.Contains(t, "business") ||
+					strings.Contains(t, "sales") ||
 					strings.Contains(t, "master") {
 					continue
 				}
