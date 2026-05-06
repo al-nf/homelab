@@ -21,7 +21,7 @@
 #include <xemacps_bd.h>
 #include <xemacps_bdring.h>
 #include <xemacps_hw.h>
-#include <xil_exception.h>0
+#include <xil_exception.h>
 #include <xil_types.h>
 #include <xparameters.h>
 #include "platform.h"
@@ -47,7 +47,7 @@ int init() {
 
     // INTERRUPTS
     int Status;
-    XScuGic_Config* intc_cfg = XScuGic_LookupConfig(XPAR_XSCUGIC_0_BASEADDR);
+    XScuGic_Config* intc_cfg = XScuGic_LookupConfig(XPAR_XSCUGIC_0_DEVICE_ID);
 
     Status = XScuGic_CfgInitialize(&intc, intc_cfg, intc_cfg->CpuBaseAddress);
     if (Status != XST_SUCCESS) {
@@ -70,7 +70,7 @@ int init() {
     Xil_ExceptionEnable();
     
     // EMAC
-    XEmacPs_Config* emac_cfg = XEmacPs_LookupConfig(XPAR_XEMACPS_0_BASEADDR);
+    XEmacPs_Config* emac_cfg = XEmacPs_LookupConfig(XPAR_XEMACPS_0_DEVICE_ID);
 
     Status = XEmacPs_CfgInitialize(&emac, emac_cfg, emac_cfg->BaseAddress);
     if (Status != XST_SUCCESS) {
@@ -100,8 +100,8 @@ int init() {
     // BDRINGS
     Status = XEmacPs_BdRingCreate(
         &(XEmacPs_GetRxRing(&emac)),
-        0xff00000,
-        0xff00000,
+        emac.RxBdRing.BaseBdAddr,
+        emac.RxBdRing.BaseBdAddr,
         XEMACPS_BD_ALIGNMENT,
         XEMACPS_MAX_RXBD
     );
@@ -112,8 +112,8 @@ int init() {
     
     Status = XEmacPs_BdRingCreate(
         &(XEmacPs_GetTxRing(&emac)),
-        0xff10000,
-        0xff10000,
+        emac.TxBdRing.BaseBdAddr,
+        emac.TxBdRing.BaseBdAddr,
         XEMACPS_BD_ALIGNMENT,
         XEMACPS_MAX_TXBD
     );
@@ -145,40 +145,14 @@ int init() {
         return XST_FAILURE;
     }
 
-    XEmacPs_Bd* rxbdptr;
-    Status = XEmacPs_BdRingAlloc(
-        &(XEmacPs_GetRxRing(&emac)),
-        XEMACPS_MAX_RXBD,
-        &rxbdptr
-    );
-    if (Status != XST_SUCCESS) {
-        xil_printf("broke: bd alloc\n\r");
-        return XST_FAILURE;
-    }
-    
-    Xil_DCacheFlushRange(0xff00000, XEMACPS_MAX_RXBD);
-    
-    Status = XEmacPs_BdRingToHw(
-        &(XEmacPs_GetRxRing(&emac)),
-        XEMACPS_MAX_RXBD,
-        rxbdptr
-    );
-    if (Status != XST_SUCCESS) {
-        xil_printf("broke: bdring to hw\n\r");
-        return XST_FAILURE;
-    }
-
     XEmacPs_SetQueuePtr(
         &emac,
-        0xff00000,
+        emac.RxBdRing.BaseBdAddr,
         0,
         XEMACPS_RECV
     );
 
-    xil_printf("rdy: %d\r\n", emac.IsReady);
-    xil_printf("exp: %d\r\n", XIL_COMPONENT_IS_READY);
-
-    Xil_SetTlbAttributes(0xff00000, STRONG_ORDERED);
+    Xil_SetTlbAttributes(emac.RxBdRing.BaseBdAddr, STRONG_ORDERED);
 
     XEmacPs_Start(&emac);
     
