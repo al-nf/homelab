@@ -18,19 +18,15 @@
  */
 
 #include <stdio.h>
-#include <xemacps_bd.h>
-#include <xemacps_bdring.h>
-#include <xemacps_hw.h>
 #include <xil_exception.h>
 #include <xil_types.h>
 #include <xparameters.h>
+#include <xil_printf.h>
+#include <xscugic.h>
+#include <xemacps.h>
+#include <xil_mmu.h>
+#include <xil_cache.h>
 #include "platform.h"
-#include "xil_printf.h"
-#include "xscugic.h"
-#include "xemacps.h"
-#include "xdmaps.h"
-#include "xil_mmu.h"
-#include "xil_cache.h"
 
 XScuGic intc;
 XEmacPs emac;
