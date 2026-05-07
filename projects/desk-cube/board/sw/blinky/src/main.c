@@ -37,6 +37,47 @@ void myassertcb(const char8 *File, s32 Line) {
 }
 */
 
+void rx_handler(void* cb) {
+    XEmacPs* e = cb;
+
+    XEmacPs_Bd* bd;
+    u32 n = XEmacPs_BdRingFromHwRx(
+        &(XEmacPs_GetRxRing(e)),
+        1,
+        &bd
+    );
+    if (n == 0)
+        return;
+
+    u8* buf = XEmacPs_BdGetAddressRx(bd);
+    u32 len = XEmacPs_BdGetLength(bd);
+    Xil_DCacheInvalidateRange(buf, len);
+
+    if (len > 14 && buf[14] == 0xAB) {
+        xil_printf("hi!\r\n");
+    }
+
+    XEmacPs_BdRingFree(
+        &(XEmacPs_GetRxRing(e)),
+        1,
+        bd
+    );
+    XEmacPs_BdRingAlloc(
+        &(XEmacPs_GetRxRing(e)),
+        1,
+        &bd
+    );
+    XEmacPs_BdSetAddressRx(
+        bd,
+        buf
+    );
+    XEmacPs_BdRingToHw(
+        &(XEmacPs_GetRxRing(e)),
+        1,
+        bd
+    );
+}
+
 int init() {
     // FOR DEBUGGING
     // Xil_AssertSetCallback(myassertcb);
@@ -92,12 +133,26 @@ int init() {
     XEmacPs_SetOperatingSpeed(&emac, 1000);
 
     XEmacPs_SetOptions(&emac, XEMACPS_RECEIVER_ENABLE_OPTION);
+
+    XEmacPs_SetHandler(&emac, XEMACPS_HANDLER_DMARECV, rx_handler, &emac);
     
+    // register GEM interrupt
+    XScuGic_Connect(
+        &intc,
+        XPS_GEM0_INT_ID,
+        (Xil_InterruptHandler)XEmacPs_IntrHandler,
+        &emac
+    );
+    XScuGic_Enable(&intc, XPS_GEM0_INT_ID);
+
+
     // BDRINGS
+    Xil_SetTlbAttributes(0xff00000, STRONG_ORDERED);
+
     Status = XEmacPs_BdRingCreate(
         &(XEmacPs_GetRxRing(&emac)),
-        emac.RxBdRing.BaseBdAddr,
-        emac.RxBdRing.BaseBdAddr,
+        0xff00000,
+        0xff00000,
         XEMACPS_BD_ALIGNMENT,
         XEMACPS_MAX_RXBD
     );
@@ -108,8 +163,8 @@ int init() {
     
     Status = XEmacPs_BdRingCreate(
         &(XEmacPs_GetTxRing(&emac)),
-        emac.TxBdRing.BaseBdAddr,
-        emac.TxBdRing.BaseBdAddr,
+        0xff10000,
+        0xff10000,
         XEMACPS_BD_ALIGNMENT,
         XEMACPS_MAX_TXBD
     );
@@ -148,13 +203,13 @@ int init() {
         XEMACPS_RECV
     );
 
-    Xil_SetTlbAttributes(emac.RxBdRing.BaseBdAddr, STRONG_ORDERED);
 
     XEmacPs_Start(&emac);
     
     return XST_SUCCESS;
 
 }
+
 int main()
 {
     init_platform();
@@ -162,6 +217,10 @@ int main()
     xil_printf("Hello World\n\r");
     init();
     xil_printf("init success!\n\r");
+
+    while (1) {
+        __wfi();
+    }
     
     cleanup_platform();
     return 0;
