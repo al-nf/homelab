@@ -38,8 +38,7 @@
   tasks = {
     "hub:build" = {
       cwd = "projects/desk-cube/api/hub";
-      exec = "([ -x ./hub ] || go build) && sudo setcap cap_net_raw+ep ./hub";
-      execIfModified = [ "*.go" ];
+      exec = "go build && sudo setcap cap_net_raw+ep ./hub";
     };
   };
 }
