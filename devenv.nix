@@ -27,7 +27,7 @@
     
     desk-cube-hub = {
       cwd = "projects/desk-cube/api/hub";
-      exec = "./hub";
+      exec = "([ -x ./hub ] || go build) && sudo setcap cap_net_raw+ep ./hub && ./hub";
     };
     
     wake-on-lan = {
@@ -35,11 +35,7 @@
       exec = "([ -x ./wolserver ] || go build) && ./wolserver";
     };
   };
-  tasks = {
-    "hub:build" = {
-      cwd = "projects/desk-cube/api/hub";
-      exec = "go build && sudo setcap cap_net_raw+ep ./hub";
-    };
-  };
+
+  # See full reference at https://devenv.sh/reference/options/
 }
 

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+if [[ ! -x ./bin/rmm-server ]]; then
+  printf 'Build first with: make build\n' >&2
+  exit 1
+fi
+# Point the unit at this checkout, including checkouts outside ~/dev/homelab.
+# systemd path escaping is deliberately restricted to straightforward paths.
+dashboard_dir="$PWD"
+if [[ ! "$dashboard_dir" =~ ^/[a-zA-Z0-9_./-]+$ ]]; then
+  printf 'Install from a path using only letters, digits, slashes, dots, underscores and hyphens.\n' >&2
+  exit 1
+fi
+dashboard_units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+mkdir -p "$dashboard_units"
+sed -e "s|%h/dev/homelab/services/rmm-server|$dashboard_dir|g" rmm-server.service > "$dashboard_units/rmm-server.service"
+systemctl --user daemon-reload
+systemctl --user enable --now rmm-server.service
+systemctl --user --no-pager status rmm-server.service
+printf '\nTo run at boot and after logout: loginctl enable-linger "$USER"\n'

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark"><meta name="theme-color" content="#101112">
+<title>Homelab · Overview</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css"><script src="/history.js" defer></script><script src="/app.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="/" aria-label="Homelab home"><span class="brand-icon" aria-hidden="true">⌘</span> homelab<span class="brand-divider">/</span><span class="brand-section">control</span></a><div class="header-actions"><span class="view-label" id="access-label">Public view</span><button id="auth-button" class="button secondary">Log in <span aria-hidden="true">↗</span></button></div></header>
+<main>
+<div class="intro"><h1>Overview</h1></div>
+<section class="summary" aria-label="Lab summary">
+<div><span class="summary-label">Machines</span><strong id="host-count">—</strong></div>
+<div><span class="summary-label">Telemetry</span><strong id="telemetry-summary" class="summary-text muted">Not connected</strong></div>
+</section>
+<section class="network-section" aria-labelledby="network-heading"><div class="section-heading"><h2 id="network-heading">Network architecture</h2></div><div class="network-map"><svg id="network-graph" viewBox="0 0 900 320" role="img" aria-label="Network topology with the management server at the center"></svg><div class="graph-key"><span><i class="key-live"></i> Reporting</span><span><i class="key-stale"></i> Stale</span></div></div><section id="link-details" class="link-details" aria-labelledby="link-details-title" hidden><div class="link-details-heading"><div><span id="link-details-type" class="eyebrow">NETWORK CONNECTION</span><h3 id="link-details-title"></h3></div><button id="close-link-details" class="close" aria-label="Close connection details">×</button></div><dl id="link-details-values"></dl></section></section>
+<section aria-labelledby="machines-heading"><div class="section-heading"><h2 id="machines-heading">Machines <span id="machine-count"></span></h2></div><div id="hosts" class="hosts" aria-busy="true"><p class="muted">Loading machines…</p></div></section>
+<section class="history-section" aria-labelledby="history-heading">
+<div class="section-heading history-heading"><h2 id="history-heading">History</h2><div class="history-controls"><select id="history-device" aria-label="Device history" data-focus="history-device"></select><div class="history-ranges" role="group" aria-label="History range"><button type="button" data-range="1h" data-focus="history-1h" aria-pressed="true">1 hour</button><button type="button" data-range="24h" data-focus="history-24h" aria-pressed="false">24 hours</button></div></div></div>
+<p id="history-status" class="history-status" role="status">Collecting history…</p>
+<div id="history-charts" class="history-charts"></div>
+</section>
+<section class="deployment-status" aria-label="Running deployment"><div><span>Running on</span><strong id="server-hostname">—</strong></div><div><span>Started</span><time id="server-started">—</time></div><div><span>Uptime</span><strong id="server-uptime">—</strong></div></section>
+<footer><span>HOMELAB <span class="footer-slash">/</span> REMOTE MANAGEMENT</span></footer>
+</main>
+<dialog id="login-dialog" aria-labelledby="login-title"><form id="login-form"><div class="dialog-heading"><h2 id="login-title">Log in</h2><button type="button" id="close-dialog" class="close" aria-label="Close login">×</button></div><p class="muted">Unlock controls.</p><label for="password">Dashboard password</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024"><p id="login-error" class="error" role="alert"></p><button id="login-submit" class="button primary" type="submit">Log in <span aria-hidden="true">→</span></button></form></dialog>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

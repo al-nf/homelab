@@ -1,0 +1,15 @@
+[Unit]
+Description=Homelab remote management dashboard
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/dev/homelab/services/rmm-server/bin/rmm-server
+WorkingDirectory=%h/dev/homelab/services/rmm-server
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
