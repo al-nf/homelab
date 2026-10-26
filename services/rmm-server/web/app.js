@@ -142,8 +142,7 @@ function renderGraph() {
     edge.append(svg('rect', { x: mx - labelWidth / 2, y: my - 12, width: labelWidth, height: 24, rx: 5, class: 'edge-label-bg' }), svg('text', { x: mx, y: my + 4, class: `edge-label ${active ? 'live' : ''}` }, label));
     links.append(edge);
     const group = svg('g', { class: `graph-host ${fresh(host) ? 'live' : 'stale'} ${selectedHost === host.id ? 'selected' : ''}`, role: 'button', tabindex: 0, 'aria-label': `${displayName(host)}, ${stateLabel(host)}, ${label}`, 'data-focus': `graph-${host.id}` });
-    group.append(svg('rect', { x: x - 67, y: y - 29, width: 134, height: 58, rx: 10 }), svg('circle', { cx: x - 45, cy: fresh(host) ? y : y - 9, r: 3, class: 'node-indicator' }), svg('text', { x: x + 3, y: fresh(host) ? y + 4 : y - 5, class: 'node-name' }, displayName(host).length > 16 ? displayName(host).slice(0, 15) + '…' : displayName(host)));
-    if (!fresh(host)) group.append(svg('text', { x, y: y + 15, class: 'node-detail' }, stateLabel(host)));
+    group.append(svg('title', {}, `${displayName(host)}: ${stateLabel(host)}`), svg('rect', { x: x - 67, y: y - 29, width: 134, height: 58, rx: 10 }), svg('circle', { cx: x - 45, cy: y, r: 3, class: 'node-indicator' }), svg('text', { x: x + 3, y: y + 4, class: 'node-name' }, displayName(host).length > 16 ? displayName(host).slice(0, 15) + '…' : displayName(host)));
     const select = () => { selectedHost = host.id; chooseHistory(host.id); render(); document.getElementById(`host-${host.id}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest' }); };
     group.addEventListener('click', select);
     group.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); } });

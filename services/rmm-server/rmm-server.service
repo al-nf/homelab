@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=%h/dev/homelab/services/rmm-server/bin/rmm-server
+ExecStart=%h/dev/homelab/bin/linux-arm64/rmm-server
 WorkingDirectory=%h/dev/homelab/services/rmm-server
 Restart=on-failure
 RestartSec=3

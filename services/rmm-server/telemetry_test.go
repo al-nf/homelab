@@ -210,12 +210,12 @@ func TestFilesystemCollector(t *testing.T) {
 	write("sys/class/net/eno1/statistics/rx_bytes", "100")
 	write("sys/class/net/eno1/statistics/tx_bytes", "200")
 	s := sampler{procRoot: filepath.Join(root, "proc"), sysRoot: filepath.Join(root, "sys"), iface: "eno1", gpu: func(context.Context) ([]gpuTelemetry, error) { return nil, errors.New("GPU unavailable") }}
-	first := s.sample(context.Background())
+	first := s.sampleLinux(context.Background())
 	if first.CPUPercent != nil {
 		t.Fatal("CPU usage invented without baseline")
 	}
 	write("proc/stat", "cpu 60 0 0 140 0 0 0 0\n")
-	reading := s.sample(context.Background())
+	reading := s.sampleLinux(context.Background())
 	if reading.CPUPercent == nil || *reading.CPUPercent != 50 || reading.TemperatureC == nil || *reading.TemperatureC != 42 {
 		t.Fatal("wrong sampled values")
 	}
@@ -227,7 +227,7 @@ func TestFilesystemCollector(t *testing.T) {
 	}
 	write("sys/class/net/eno1/speed", "-1")
 	write("sys/class/net/eno1/carrier", "0")
-	reading = s.sample(context.Background())
+	reading = s.sampleLinux(context.Background())
 	if reading.Link.SpeedMbps != nil || reading.Link.Carrier == nil || *reading.Link.Carrier {
 		t.Fatal("down link has speed")
 	}

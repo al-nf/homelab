@@ -28,8 +28,8 @@ compile_commands.json
 workspace_journal*.py
 RemoteSystemsTempFiles/
 
-# Local ARM64 deployment binary
-/rmm-server
+# Generated executables
+/bin/
 
 # Redistributed font license (text files are otherwise ignored above)
 !services/rmm-server/web/fonts/OFL.txt

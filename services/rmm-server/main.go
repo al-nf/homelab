@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -370,6 +371,9 @@ func main() {
 	telemetryPath := flag.String("telemetry-config", "", "Receiver configuration path; defaults to ~/.config/homelab/telemetry.json")
 	collectorPath := flag.String("collector-config", "", "Collector configuration path; defaults to ~/.config/homelab/collector.json")
 	flag.Parse()
+	if *mode == "server" && !*installCollector && (runtime.GOOS != "linux" || runtime.GOARCH != "arm64") {
+		log.Fatal("The dashboard server requires Linux ARM64. Use collector or sample mode on this machine.")
+	}
 	hostsPath := os.Getenv("HOMELAB_HOSTS_FILE")
 	if hostsPath == "" {
 		hostsPath = configPath("hosts.json")

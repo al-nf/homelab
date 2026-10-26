@@ -1,33 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
-repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$(dirname -- "${BASH_SOURCE[0]}")/../lib/common.sh"
 cd -- "$repo_dir"
-laptop_target="${1:-afung@babylon}"
-pi_target="${2:-${RMM_DEPLOY_TARGET:-afung@100.98.188.45}}"
-host_id="${RMM_LAPTOP_ID:-babylon}"
-if [[ $# -gt 2 || ! "$laptop_target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.@:-]*$ || ! "$pi_target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.@:-]*$ || ! "$host_id" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
-  printf 'Usage: ./setup-laptop [user@mac] [user@pi]\n' >&2
+# Babylon (M3 Mac) and artemis have stable Tailscale addresses.
+laptop_target=afung@100.119.223.118
+pi_target="${RMM_DEPLOY_TARGET:-afung@100.98.188.45}"
+host_id=babylon
+if [[ $# -ne 0 || ! "$pi_target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.@:-]*$ ]]; then
+  printf 'Usage: ./lab setup babylon (sets up babylon on artemis)\n' >&2
   exit 1
 fi
 if [[ "${HOMELAB_DEV_SHELL:-}" != 1 ]]; then
-  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/setup-laptop" "$@"
+  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/scripts/setup/babylon.sh"
 fi
-printf 'Checking macOS on %s…\n' "$laptop_target"
-platform="$(ssh "$laptop_target" 'uname -s; uname -m')"
-case "$platform" in
-  $'Darwin\narm64') arch=arm64 ;;
-  $'Darwin\nx86_64') arch=amd64 ;;
-  *) printf 'Expected a macOS laptop; received: %s\n' "$platform" >&2; exit 1 ;;
-esac
-printf 'Building the macOS collector locally…\n'
-(cd services/rmm-server && CGO_ENABLED=0 GOOS=darwin GOARCH="$arch" go build -trimpath -buildvcs=false -o "bin/collector-darwin-$arch" .)
-bash ./deploy "$pi_target"
-nixpkgs_rev="$(awk -F '"' '/"rev"/ { print $4; exit }' flake.lock)"
-if [[ ! "$nixpkgs_rev" =~ ^[a-f0-9]{40}$ ]]; then exit 1; fi
-tmux_ref="github:NixOS/nixpkgs/$nixpkgs_rev#tmux"
 umask 077
-collector_temp="$(mktemp)"
-trap 'rm -f -- "$collector_temp"' EXIT
+ssh_dir="$(mktemp -d /tmp/rmm-ssh.XXXXXXXX)"
+mac_ssh_options=(-o ControlMaster=auto -o ControlPersist=yes -o "ControlPath=$ssh_dir/mac")
+cleanup() {
+  if [[ -S "$ssh_dir/mac" ]]; then
+    ssh -S "$ssh_dir/mac" -O exit "$laptop_target" >/dev/null 2>&1 || true
+  fi
+  rm -rf -- "$ssh_dir"
+}
+trap cleanup EXIT
+printf 'Checking macOS on %s…\n' "$laptop_target"
+platform="$(ssh "${mac_ssh_options[@]}" "$laptop_target" '/bin/bash -s' <<'PLATFORM'
+set -e
+/usr/bin/uname -s
+/usr/bin/uname -m
+PLATFORM
+)"
+if [[ "$platform" != $'Darwin\narm64' ]]; then
+  printf 'Expected babylon to be an Apple Silicon Mac; received: %s\n' "$platform" >&2
+  exit 1
+fi
+printf 'Building the macOS collector locally…\n'
+(cd services/rmm-server && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -buildvcs=false -o "$repo_dir/bin/darwin-arm64/collector-babylon" .)
+bash "$repo_dir/scripts/server/deploy.sh" "$pi_target"
+load_tmux_ref
+collector_temp="$ssh_dir/collector.json"
 printf 'Registering %s on artemis, preserving existing machines and tokens…\n' "$host_id"
 ssh "$pi_target" "nix --extra-experimental-features 'nix-command flakes' shell '$tmux_ref' --command bash -s -- '$host_id'" > "$collector_temp" <<'REMOTE'
 set -euo pipefail
@@ -51,11 +62,18 @@ if ! ./rmm-server -health-check >&2; then
 fi
 cat "$collector_config"
 REMOTE
-ssh "$laptop_target" 'umask 077; mkdir -p "$HOME/rmm-collector"; chmod 700 "$HOME/rmm-collector"'
-rsync -az -- "services/rmm-server/bin/collector-darwin-$arch" "$laptop_target:rmm-collector/rmm-collector"
-rsync -az -- "$collector_temp" "$laptop_target:rmm-collector/collector.json"
+ssh "${mac_ssh_options[@]}" "$laptop_target" '/bin/bash -s' <<'PREPARE'
+set -e
+umask 077
+mkdir -p "$HOME/rmm-collector"
+chmod 700 "$HOME/rmm-collector"
+
+PREPARE
+rsync_ssh="ssh -o ControlMaster=auto -o ControlPersist=yes -o ControlPath=$ssh_dir/mac"
+rsync -az -e "$rsync_ssh" -- "bin/darwin-arm64/collector-babylon" "$laptop_target:rmm-collector/rmm-collector"
+rsync -az -e "$rsync_ssh" -- "$collector_temp" "$laptop_target:rmm-collector/collector.json"
 printf 'Verifying a real sample from the laptop and starting its collector…\n'
-ssh "$laptop_target" 'bash -s' <<'REMOTE'
+ssh "${mac_ssh_options[@]}" "$laptop_target" '/bin/bash -s' <<'REMOTE'
 set -euo pipefail
 cd "$HOME/rmm-collector"
 chmod 600 collector.json
@@ -78,12 +96,8 @@ if [[ -f collector.pid ]]; then
   fi
 fi
 ./rmm-collector -mode collector -collector-config ./collector.json -once
-nohup ./rmm-collector -mode collector -collector-config ./collector.json >collector.log 2>&1 </dev/null &
-collector_pid=$!
-printf '%s\n' "$collector_pid" >collector.pid
-sleep 2
-if ! kill -0 "$collector_pid" 2>/dev/null; then cat collector.log >&2; exit 1; fi
-printf 'Collector is running (PID %s). Logs: ~/rmm-collector/collector.log\n' "$collector_pid"
+./rmm-collector -install-collector -collector-config ./collector.json
+rm -f collector.pid
 REMOTE
 printf '\n%s should appear in the graph. Re-run this command to update/restart its collector.\n' "$host_id"
-printf 'The collector survives SSH disconnects; restart it after a laptop reboot. Sleeping laptops show stale readings.\n'
+printf 'Collector starts automatically at macOS login and restarts after crashes. Sleeping laptops show stale readings.\n'

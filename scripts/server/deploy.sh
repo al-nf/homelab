@@ -1,27 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
-repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$(dirname -- "${BASH_SOURCE[0]}")/../lib/common.sh"
 cd -- "$repo_dir"
 pi_target="${1:-${RMM_DEPLOY_TARGET:-afung@100.98.188.45}}"
 if [[ $# -gt 1 || ! "$pi_target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.@:-]*$ ]]; then
-  printf 'Usage: ./deploy [user@pi-or-ssh-alias]\n' >&2
+  printf 'Usage: ./lab deploy [user@pi-or-ssh-alias]\n' >&2
   exit 1
 fi
 if [[ "${HOMELAB_DEV_SHELL:-}" != 1 ]] || ! command -v rsync >/dev/null || ! command -v ssh >/dev/null || ! command -v go >/dev/null; then
-  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/deploy" "$@"
+  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/scripts/server/deploy.sh" "$@"
 fi
-printf 'Building ./rmm-server for the Pi…\n'
-(cd services/rmm-server && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -buildvcs=false -o "$repo_dir/rmm-server" .)
+printf 'Building ./bin/linux-arm64/rmm-server for the Pi…\n'
+make -C services/rmm-server build
 # Reuse the repo's pinned nixpkgs version for tmux on the Pi.
-nixpkgs_rev="$(awk -F '"' '/"rev"/ { print $4; exit }' flake.lock)"
-if [[ ! "$nixpkgs_rev" =~ ^[a-f0-9]{40}$ ]]; then
-  printf 'Cannot read the nixpkgs revision from flake.lock.\n' >&2
-  exit 1
-fi
-tmux_ref="github:NixOS/nixpkgs/$nixpkgs_rev#tmux"
+load_tmux_ref
 printf 'Uploading to %s:~/rmm-server/rmm-server…\n' "$pi_target"
 ssh "$pi_target" 'mkdir -p "$HOME/rmm-server"'
-rsync -az -- ./rmm-server "$pi_target:rmm-server/rmm-server"
+rsync -az -- ./bin/linux-arm64/rmm-server "$pi_target:rmm-server/rmm-server"
 ssh "$pi_target" "nix --extra-experimental-features 'nix-command flakes' shell '$tmux_ref' --command bash -s" <<'REMOTE'
 set -euo pipefail
 cd "$HOME/rmm-server"

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "$(uname -sm)" != 'Linux aarch64' ]]; then
+  printf 'Server configuration/installation requires Linux aarch64.\n' >&2
+  exit 1
+fi
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 read -r -s -p 'Dashboard password (at least 16 characters): ' dashboard_password
 printf '\n'
@@ -9,5 +13,5 @@ if [[ "$dashboard_password" != "$dashboard_confirm" ]]; then
   printf 'Passwords do not match.\n' >&2
   exit 1
 fi
-printf '%s' "$dashboard_password" | ./bin/rmm-server -set-password
+printf '%s' "$dashboard_password" | ../../bin/linux-arm64/rmm-server -set-password
 unset dashboard_password dashboard_confirm

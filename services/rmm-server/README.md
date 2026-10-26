@@ -6,7 +6,10 @@ A collector on each machine reports CPU, RAM, temperatures, GPU/VRAM, and Ethern
 link speed. Unavailable readings stay null. Stale telemetry does not establish
 power state, and a wake response only confirms packet transmission.
 
-## Run locally
+## Run on Linux ARM64
+
+The dashboard server runs only on Linux ARM64. Collectors support Linux and macOS.
+Build and deploy from Babylon with `./lab deploy` at the repository root.
 
 From the repository root, enter the pinned Nix toolchain:
 
@@ -43,11 +46,11 @@ make build
 The setup command asks for a password twice without displaying it, then stores it
 in `~/.config/homelab/password` (or `$XDG_CONFIG_HOME/homelab/password`) with mode
 0600. The standalone `rmm-server -set-password` command also prompts with echo
-hidden and finishes on Enter. You can also pipe a password to `./bin/rmm-server -set-password`. Restart the
+hidden and finishes on Enter. You can also pipe a password to `../../bin/linux-arm64/rmm-server -set-password`. Restart the
 dashboard after setting or changing its password. `HOMELAB_PASSWORD`, if set,
 overrides the saved password; unset it to use the setup command's password.
 
-The normal deployment flow is the root `./run` script, which starts the dashboard
+The normal deployment flow is the root `./lab run` script, which starts the dashboard
 in tmux. No systemd setup is needed. An optional user service installer is
 available if you later choose to manage only the dashboard that way. Run it on the
 intended host, after stopping any existing copy:
@@ -78,6 +81,10 @@ journalctl --user -u rmm-server -n 30 --no-pager
 
 ## Internet access with Tailscale Funnel
 
+From this repository on Babylon, use `./lab funnel on` to configure Artemis,
+`./lab funnel status` to show the public URL, and `./lab funnel off` to remove
+the dashboard endpoint. The following commands are the equivalent manual setup on Artemis.
+
 Run the service on an always-on Linux host on the target's Ethernet broadcast
 network. A service running on petra cannot wake petra while petra is powered off.
 Tailscale carries browser traffic to the dashboard; wake packets originate from
@@ -104,10 +111,10 @@ the setup prompts if requested. No router port forwarding is needed. See the
 The entire overview is public, including machine names, descriptions, and future
 telemetry. MAC and broadcast addresses are excluded from the public API.
 
-To stop exposing the service (this resets Funnel configuration for this node):
+To stop exposing the dashboard endpoint:
 
 ```sh
-tailscale funnel reset
+tailscale funnel --bg --https=8443 http://127.0.0.1:8080 off
 ```
 
 The service binds to loopback by default. Keep it there behind Funnel. Secure,
@@ -139,11 +146,11 @@ metric cards work normally, and no wake button is shown.
 ```sh
 make test
 make build
-./bin/rmm-server
+../../bin/linux-arm64/rmm-server
 ```
 
 Assets are embedded at build time. Restart `go run .` after edits to refresh the
-preview. The root `./run` builds from current source when creating its tmux session.
+preview. The root `./lab run` builds from current source when creating its tmux session.
 
 ## Dashboard API
 
@@ -164,16 +171,16 @@ confirms packet transmission. It does not establish that the target is online.
 Artemis automatically collects its own CPU usage, RAM usage, and CPU temperature
 every five seconds while the dashboard runs. Click the center node to select its
 telemetry card. No separate collector process or credentials are needed on artemis.
-Deploy an updated binary with `./deploy` to enable this on the Pi.
+Deploy an updated binary with `./lab deploy` to enable this on the Pi.
 
 The dashboard runs on artemis; petra runs the collector. From the repo root on
-petra, run `./setup-petra` outside tmux. This configures the receiver, migrates
+petra, run `./lab setup petra` outside tmux. This configures the receiver, migrates
 existing Ethernet telemetry settings, copies credentials privately, verifies a
 real sample, and installs the collector as `rmm-collector.service` for the current
 user. It starts at boot with lingering, survives logout, and restarts automatically.
 Tokens are preserved. Logs: `journalctl --user -u rmm-collector.service -f`.
 
-For the macOS laptop, run `./setup-babylon` on petra. This builds and installs a
+For the macOS laptop, run `./lab setup babylon` on petra. This builds and installs a
 standalone collector on `afung@babylon`, adds a telemetry-only host, and verifies
 a real sample before enabling a LaunchAgent. It starts at macOS desktop login and
 restarts automatically; no setup is needed after rebooting and logging in.
@@ -210,19 +217,21 @@ The `purego` library is compiled into the same executable to call Apple's system
 framework. GPU metrics remain null. `interface: "auto"` selects the interface used to
 reach the receiver on each sample, avoiding a hardcoded macOS `utun` number.
 
-To inspect one local sample without sending it:
+To build a native collector and inspect one local sample without sending it,
+from the repository root:
 
 ```sh
-./services/rmm-server/bin/rmm-server -mode sample
+make -C services/rmm-server collector
+./bin/native/rmm-collector -mode sample
 ```
 
 To send one sample using the saved collector configuration:
 
 ```sh
-./services/rmm-server/bin/rmm-server -mode collector -once
+./bin/native/rmm-collector -mode collector -once
 ```
 
-`./run --collector --restart` rebuilds/restarts the collector. The private files
+`./lab collector --restart` rebuilds/restarts the collector. The private files
 `~/.config/homelab/telemetry.json` and `collector.json` honor `XDG_CONFIG_HOME`.
 `-telemetry-config` and `-collector-config` override them. For custom configurations,
 `-configure-telemetry` updates the listener/target while retaining per-host tokens;

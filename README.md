@@ -4,15 +4,46 @@ A public RMM dashboard with login protected Wake on LAN controls, live telemetry
 and a network graph showing reported links and interface traffic. Plain HTML, CSS,
 and JavaScript, embedded in a Go server. Intended to run on the lab's Raspberry Pi 5.
 
-## Run
+## Unified command interface
+
+Run `./lab` in a terminal for the split interface: numbered commands on the left,
+live output and the last execution's result on the right. Press `1`–`9` or `0`
+to select immediately, and `q` to go back or quit. Output follows the latest lines;
+there are no scrolling shortcuts. Opening submenus preserves the previous output;
+running another command replaces it.
+
+While commands run, typing goes to the command and Ctrl+C interrupts it. SSH and
+attached collector sessions temporarily use the full terminal, then return.
+The interface requires at least 76 columns by 20 rows and uses Python's standard
+curses library. If Python/curses is unavailable, the launcher supplies it using Nix.
+
+Direct commands remain available with `./lab --help`. For example,
+`./lab --target afung@artemis status` checks another SSH destination.
+With redirected input/output, `./lab` prints help instead of opening a menu.
+
+Implementations live in `scripts/server/`, `scripts/local/`, and `scripts/setup/`,
+with shared helpers in `scripts/lib/`. Use `./lab` for all commands; the old
+compatibility aliases have been removed. The generic `./lab setup laptop` retains
+the older manual background collector; use `./lab setup babylon` for its LaunchAgent.
+
+Generated executables live under `bin/`: `native/` for local collector builds,
+`linux-arm64/` for Artemis, and `darwin-arm64/` or `darwin-amd64/` for Mac
+collectors. Collector setup rebuilds its executable when needed. Generated
+executables are ignored by Git.
+
+## Run on Linux ARM64
+
+The dashboard server runs only on Linux ARM64 (aarch64), including Artemis.
+On Babylon or Petra, use `./lab deploy` to build and update Artemis remotely.
+`make build` always cross-compiles the Linux ARM64 server; `make collector`
+builds a native collector for the current machine.
 
 ```sh
-./run
+./lab run
 ```
 
 `run` enters a plain pinned Nix shell, builds `services/rmm-server`, starts the
-server in tmux, and attaches. Run it again to reattach. Supports x86_64 Linux and
-aarch64 Linux, including 64-bit Raspberry Pi OS. Nothing is installed or started
+server in tmux, and attaches. Run it again to reattach. Supports Linux aarch64, including 64-bit Raspberry Pi OS. Nothing is installed or started
 through systemd by the dashboard mode of `run`. The older projects are not launched.
 
 Detach with Ctrl+B, then D; the dashboard continues after SSH disconnects. The
@@ -26,13 +57,16 @@ Stop the session and dashboard with:
 tmux kill-session -t homelab
 ```
 
-To rebuild after edits, detach and run `./run --restart`. Use `./run --detach` to
-start without attaching. After collector setup, `./run --collector` starts the
+To rebuild after edits, detach and run `./lab run --restart`. Use `./lab run --detach` to
+start without attaching. After collector setup, `./lab collector` starts the
 installed user service and follows its journal; `--restart` rebuilds, updates the
 installed binary, and restarts it. Without an installed service, collector mode
 retains the original tmux workflow.
 
 ## Development and login setup
+
+Run tests on your development machine. Run `./configure-login` on Linux ARM64
+where the dashboard is hosted.
 
 ```sh
 nix --extra-experimental-features 'nix-command flakes' develop path:.
@@ -48,10 +82,10 @@ network configuration, and public HTTPS access through Tailscale Funnel.
 
 ## Migration from devenv
 
-`flake.nix` is a small `mkShell` declaration containing Go, Make, tmux, rsync, and SSH.
+`flake.nix` is a small `mkShell` declaration containing Go, Make, tmux, rsync, SSH, and Python.
 `flake.lock` preserves the nixpkgs revision previously used by devenv. There are no
 devenv modules, dotenv evaluation, or direnv requirements. Entering the directory
-does not build a shell; use `./run` or `nix --extra-experimental-features 'nix-command flakes' develop path:.` explicitly. Run
+does not build a shell; use `./lab run` or `nix --extra-experimental-features 'nix-command flakes' develop path:.` explicitly. Run
 `direnv allow` once if you still use direnv, so it accepts the replacement `.envrc`.
 
 The service moved from `services/wake-on-lan` to `services/rmm-server`; its module
@@ -60,18 +94,60 @@ and binary are now named `rmm-server`. Saved credentials and sessions still use 
 An old `dev` tmux session is left alone; stop it yourself when switching over to
 avoid running two copies. Tailscale's existing proxy can keep forwarding to 8080.
 
+## Control artemis from babylon
+
+From this checkout on the M3 Mac, with Tailscale connected:
+
+```sh
+./lab status
+./lab logs
+./lab restart
+./lab ssh
+./lab deploy
+```
+
+`status` checks the remote tmux session and dashboard health. `logs`
+prints the last 200 lines of dashboard output. `start`, `stop`, and `restart`
+manage the dashboard's `homelab` tmux session. `ssh` opens a shell on artemis;
+`deploy` builds on this laptop, uploads, and restarts the dashboard. These commands
+target `afung@100.98.188.45`; set `RMM_DEPLOY_TARGET` to override it. Tailscale SSH
+may print an authentication link that you need to open before the command proceeds.
+
+Only deployment needs local Nix; the other controls use macOS's built-in SSH.
+The pinned development shell supports Apple Silicon macOS as well as Linux.
+Petra does not need to be online to control or deploy to artemis from babylon.
+Use the dashboard's existing HTTPS URL for login and Wake on LAN controls.
+`./lab setup babylon` is the collector installer run from petra, and is not needed
+to control artemis from this laptop.
+
+## Public HTTPS access
+
+From Babylon, run `./lab funnel` (or `./lab funnel on`) to enable Tailscale
+Funnel on Artemis. The script checks
+server health, forwards public HTTPS port 8443 to `http://127.0.0.1:8080`, and
+prints the HTTPS URL. It persists across SSH disconnects and server reboots.
+
+Use `./lab funnel status` to show the URL/configuration and `./lab funnel off`
+to remove this dashboard endpoint. Other Funnel ports are left alone.
+Telemetry port 8081 remains private. The dashboard overview is public; wake
+controls require dashboard login. Use the printed HTTPS URL, including `:8443`.
+
+Artemis must have Tailscale installed and permission for this user to manage
+Funnel. If Tailscale prints a setup link, follow it to enable HTTPS/Funnel for
+the tailnet. See the [Tailscale Funnel CLI documentation](https://tailscale.com/docs/reference/tailscale-cli/funnel).
+
 ## Deploy to the Pi while developing
 
 ```sh
-./deploy
+./lab deploy
 ```
 
 The default SSH destination is `afung@100.98.188.45` (artemis's reported Tailscale
-IP). Override it with `./deploy afung@artemis` or `RMM_DEPLOY_TARGET`. The scripts
+IP). Override it with `./lab deploy afung@artemis` or `RMM_DEPLOY_TARGET`. The scripts
 explicitly enable the `nix-command` and `flakes` experimental features for local
 and remote Nix invocations; no global Nix setting changes are needed.
 
-Deployment cross-compiles one static ARM64 binary at `./rmm-server`, copies it to
+Deployment cross-compiles one static ARM64 binary at `./bin/linux-arm64/rmm-server`, copies it to
 `~/rmm-server/rmm-server` on the Pi with rsync, and restarts the `homelab` tmux
 session. It checks that the new binary responds on port 8080. The Pi uses the
 repo's pinned nixpkgs version to supply tmux. There are no source uploads, release
@@ -84,7 +160,7 @@ The race detector requires a compatible memory layout and cannot run on a Pi usi
 Passwords, telemetry tokens, and saved sessions stay in their existing configuration
 and state directories on the Pi. The existing Tailscale Serve/Funnel proxy continues
 to use port 8080. Restart the local collector separately with
-`./run --collector --restart` after collector changes.
+`./lab collector --restart` after collector changes.
 
 See the [collector setup guide](services/rmm-server/README.md#telemetry-over-tailscale)
 for the one-time Pi receiver and petra collector configuration.
@@ -94,7 +170,7 @@ for the one-time Pi receiver and petra collector configuration.
 From this repo on petra, outside tmux:
 
 ```sh
-./setup-petra
+./lab setup petra
 ```
 
 Setup deploys the latest binary, configures the Pi's receiver on its Tailscale IPv4
@@ -107,7 +183,7 @@ preserved. The old local collector tmux session is stopped during migration.
 No network configuration changes are made.
 
 Both endpoints use `tailscale0` by default. Override the SSH destination with
-`./setup-petra afung@artemis`. `RMM_PI_INTERFACE` and
+`./lab setup petra afung@artemis`. `RMM_PI_INTERFACE` and
 `RMM_COLLECTOR_INTERFACE` override interface names if necessary. View logs with
 `journalctl --user -u rmm-collector.service -f`. If enabling lingering requires
 administrator authentication, run `sudo loginctl enable-linger afung` once and
@@ -163,7 +239,7 @@ continue to work.
 
 SQLite is compiled into the binary using a Go driver; no SQLite installation is
 needed on the Pi or collectors. Builds require Go 1.26+, supplied by the pinned
-Nix shell. Only `./deploy` is needed to enable history; collectors already send
+Nix shell. Only `./lab deploy` is needed to enable history; collectors already send
 the required readings.
 
 ## Add the macOS laptop (babylon)
@@ -171,7 +247,7 @@ the required readings.
 From this repo on petra, run:
 
 ```sh
-./setup-babylon
+./lab setup babylon
 ```
 
 This script is specifically for **babylon (M3)** and artemis. It connects to
@@ -179,7 +255,8 @@ This script is specifically for **babylon (M3)** and artemis. It connects to
 addresses. It builds the macOS binary locally, registers babylon on artemis, and
 copies the binary and private token to `~/rmm-collector` on babylon. No Go, Nix,
 Homebrew, or sensor helper is needed on the Mac. SSH Remote Login must be enabled.
-The script takes no arguments; it does not rely on MagicDNS resolution.
+The setup command takes no arguments; it does not rely on MagicDNS resolution.
+`RMM_DEPLOY_TARGET` can override the server destination.
 Mac SSH commands and rsync transfers share one authenticated connection during
 setup, avoiding repeated password prompts. The connection closes when setup exits.
 

@@ -1,31 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
-repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$(dirname -- "${BASH_SOURCE[0]}")/../lib/common.sh"
 cd -- "$repo_dir"
 pi_target="${1:-${RMM_DEPLOY_TARGET:-afung@100.98.188.45}}"
 pi_interface="${RMM_PI_INTERFACE:-tailscale0}"
 collector_interface="${RMM_COLLECTOR_INTERFACE:-tailscale0}"
 if [[ $# -gt 1 || ! "$pi_target" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.@:-]*$ || ! "$pi_interface" =~ ^[a-zA-Z0-9_.-]+$ || ! "$collector_interface" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
-  printf 'Usage: ./setup-collector [user@pi-or-ssh-alias]\n' >&2
+  printf 'Usage: ./lab setup petra [user@pi-or-ssh-alias]\n' >&2
   exit 1
 fi
 if [[ -n "${TMUX:-}" ]]; then
-  printf 'Detach from tmux first (Ctrl+B, then D), then run ./setup-collector.\n' >&2
+  printf 'Detach from tmux first (Ctrl+B, then D), then run ./lab setup petra.\n' >&2
   exit 1
 fi
 if [[ "${HOMELAB_DEV_SHELL:-}" != 1 ]]; then
-  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/setup-collector" "$@"
+  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/scripts/setup/petra.sh" "$@"
 fi
 if [[ ! -d "/sys/class/net/$collector_interface" ]]; then
   printf 'Collector interface %s does not exist. Is Tailscale running?\n' "$collector_interface" >&2
   exit 1
 fi
 printf 'Deploying the dashboard with Tailscale setup support…\n'
-bash ./deploy "$pi_target"
-make -C services/rmm-server build
-nixpkgs_rev="$(awk -F '"' '/"rev"/ { print $4; exit }' flake.lock)"
-if [[ ! "$nixpkgs_rev" =~ ^[a-f0-9]{40}$ ]]; then exit 1; fi
-tmux_ref="github:NixOS/nixpkgs/$nixpkgs_rev#tmux"
+bash "$repo_dir/scripts/server/deploy.sh" "$pi_target"
+make -C services/rmm-server collector
+load_tmux_ref
 umask 077
 collector_dir="${XDG_CONFIG_HOME:-$HOME/.config}/homelab"
 mkdir -p "$collector_dir"
@@ -59,11 +57,13 @@ cat "${XDG_CONFIG_HOME:-$HOME/.config}/homelab/collector.json"
 REMOTE
 mv -- "$collector_temp" "$collector_dir/collector.json"
 printf 'Verifying one real telemetry sample over Tailscale…\n'
-if ! ./services/rmm-server/bin/rmm-server -mode collector -once; then
+if ! ./bin/native/rmm-collector -mode collector -once; then
   printf '\nSample failed. Check tailnet access to the Pi on TCP 8081.\n' >&2
   printf 'Credentials were preserved; the collector was not started.\n' >&2
   exit 1
 fi
-bash ./run --collector --restart --detach --prebuilt
+session="${HOMELAB_SESSION:-homelab}-collector"
+if tmux has-session -t "=$session" 2>/dev/null; then tmux kill-session -t "=$session"; fi
+./bin/native/rmm-collector -install-collector
 printf '\nCollector is running over Tailscale. The dashboard should update within 5 seconds.\n'
-printf 'View collector logs with: tmux attach -t homelab-collector\n'
+printf 'Collector starts automatically at boot. Logs: journalctl --user -u rmm-collector.service -f\n'
