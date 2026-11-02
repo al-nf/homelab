@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname -- "${BASH_SOURCE[0]}")/../lib/common.sh"
+cd -- "$repo_dir"
+
+mode=server
+restart=0
+detach=0
+prebuilt=0
+for argument in "$@"; do
+  case "$argument" in
+    --restart) restart=1 ;;
+    --collector) mode=collector ;;
+    --detach) detach=1 ;;
+    --prebuilt) prebuilt=1 ;;
+    *) printf 'Usage: ./lab run [--restart] [--collector] [--detach] [--prebuilt]\n' >&2; exit 1 ;;
+  esac
+done
+if [[ "$mode" == server && "$(uname -sm)" != 'Linux aarch64' ]]; then
+  printf 'The dashboard server runs only on Linux aarch64. Use ./lab deploy to update Artemis.\n' >&2
+  exit 1
+fi
+
+# A plain pinned Nix shell supplies tools; tmux runs the dashboard.
+if [[ "${HOMELAB_DEV_SHELL:-}" != 1 ]]; then
+  exec nix --extra-experimental-features 'nix-command flakes' develop "path:$repo_dir" --command bash "$repo_dir/scripts/local/run.sh" "$@"
+fi
+
+build_target=build
+binary=bin/linux-arm64/rmm-server
+if [[ "$mode" == collector ]]; then
+  build_target=collector
+  binary=bin/native/rmm-collector
+fi
+session="${HOMELAB_SESSION:-homelab}"
+window=rmm-server
+server_command='../../bin/linux-arm64/rmm-server; printf "\nRMM server stopped. Press Enter to close.\n"; read -r'
+if [[ "$mode" == collector ]]; then
+  collector_unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/rmm-collector.service"
+  if [[ -f "$collector_unit" ]]; then
+    if [[ "$restart" == 1 ]]; then
+      if [[ "$prebuilt" != 1 ]]; then make -C services/rmm-server "$build_target"; fi
+      "$repo_dir/$binary" -install-collector
+    else
+      systemctl --user start rmm-collector.service
+    fi
+    if [[ "$detach" == 1 ]]; then
+      printf 'Collector is managed by rmm-collector.service.\n'
+      exit 0
+    fi
+    exec journalctl --user -u rmm-collector.service -f -n 30
+  fi
+  session+="-collector"
+  window=collector
+  server_command='../../bin/native/rmm-collector -mode collector; printf "\nCollector stopped. Press Enter to close.\n"; read -r'
+fi
+if [[ "$restart" == 1 ]]; then
+  if [[ -n "${TMUX:-}" ]]; then
+    printf 'Detach from tmux first (Ctrl+B, then D), then run ./lab run --restart.\n' >&2
+    exit 1
+  fi
+  if [[ "$prebuilt" == 1 ]]; then
+    if [[ ! -x "$binary" ]]; then
+      printf 'Prebuilt binary is missing; the existing process was left running.\n' >&2
+      exit 1
+    fi
+  else
+    make -C services/rmm-server "$build_target"
+  fi
+  if tmux has-session -t "=$session" 2>/dev/null; then
+    tmux kill-session -t "=$session"
+  fi
+fi
+if ! tmux has-session -t "=$session" 2>/dev/null; then
+  if [[ "$prebuilt" != 1 && "$restart" != 1 ]]; then make -C services/rmm-server "$build_target"; fi
+  if [[ ! -x "$binary" ]]; then
+    printf 'RMM server binary is missing.\n' >&2
+    exit 1
+  fi
+  tmux new-session -d -s "$session" -n "$window" \
+    -e "PATH=$PATH" -c "$repo_dir/services/rmm-server" "$server_command"
+fi
+if [[ "$detach" == 1 ]]; then
+  printf 'Running %s in tmux session %s.\n' "$mode" "$session"
+  exit 0
+fi
+if [[ -n "${TMUX:-}" ]]; then
+  exec tmux switch-client -t "$session"
+else
+  exec tmux attach-session -t "$session"
+fi

@@ -1,0 +1,4 @@
+/bin/
+/hosts.local.json
+.env
+/release.txt

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+usage() {
+  cat <<'HELP'
+Usage: ./lab [--target user@host] <command> [arguments]
+
+Run ./lab with no arguments in a terminal to open the split terminal menu.
+  menu               Open the split terminal menu explicitly
+
+Artemis (default target: afung@100.98.188.45):
+  status             Check dashboard health
+  logs               Print the last 200 lines of dashboard output
+  start|stop|restart Manage the dashboard
+  ssh                Open an interactive server shell
+  deploy [user@host] Build, upload, restart, and verify the dashboard
+  funnel [on|status|off]
+                     Expose the dashboard publicly over HTTPS (default: on)
+
+Local commands:
+  run [--restart] [--detach] [--prebuilt]
+      (run is available only on Linux aarch64)
+  collector [--restart] [--detach] [--prebuilt]
+
+Collector installation (run from petra):
+  setup petra [user@server]       Install the local Linux user service
+  setup babylon                 Install Babylon's macOS LaunchAgent
+  setup laptop [user@mac] [user@server]
+                                Legacy generic Mac background collector
+
+Set RMM_DEPLOY_TARGET or use --target to choose another server.
+HELP
+}
+if [[ "${1:-}" == --target ]]; then
+  if [[ $# -lt 2 || ! "$2" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.@:-]*$ ]]; then
+    printf 'Expected --target user@host.\n' >&2
+    exit 1
+  fi
+  export RMM_DEPLOY_TARGET="$2"
+  shift 2
+fi
+if [[ $# -eq 0 ]]; then
+  if [[ -t 0 && -t 1 ]]; then
+    set -- menu
+  else
+    usage
+    exit 0
+  fi
+fi
+command="$1"
+if [[ $# -gt 0 ]]; then shift; fi
+case "$command" in
+  help|-h|--help) usage ;;
+  menu)
+    if [[ $# -ne 0 ]]; then usage >&2; exit 1; fi
+    exec bash "$repo_dir/scripts/local/menu.sh"
+    ;;
+  status|logs|start|stop|restart|ssh)
+    if [[ $# -ne 0 ]]; then usage >&2; exit 1; fi
+    exec bash "$repo_dir/scripts/server/control.sh" "$command"
+    ;;
+  deploy) exec bash "$repo_dir/scripts/server/deploy.sh" "$@" ;;
+  funnel) exec bash "$repo_dir/scripts/server/funnel.sh" "$@" ;;
+  run) exec bash "$repo_dir/scripts/local/run.sh" "$@" ;;
+  collector) exec bash "$repo_dir/scripts/local/run.sh" --collector "$@" ;;
+  setup)
+    machine="${1:-}"
+    if [[ $# -gt 0 ]]; then shift; fi
+    case "$machine" in
+      petra|babylon|laptop) exec bash "$repo_dir/scripts/setup/$machine.sh" "$@" ;;
+      *) usage >&2; exit 1 ;;
+    esac
+    ;;
+  *) usage >&2; exit 1 ;;
+esac
