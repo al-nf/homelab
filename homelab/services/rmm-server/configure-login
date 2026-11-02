@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+read -r -s -p 'Dashboard password (at least 16 characters): ' dashboard_password
+printf '\n'
+read -r -s -p 'Confirm password: ' dashboard_confirm
+printf '\n'
+if [[ "$dashboard_password" != "$dashboard_confirm" ]]; then
+  printf 'Passwords do not match.\n' >&2
+  exit 1
+fi
+printf '%s' "$dashboard_password" | ./bin/rmm-server -set-password
+unset dashboard_password dashboard_confirm

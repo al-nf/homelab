@@ -1,0 +1,9 @@
+[
+  {
+    "id": "petra",
+    "name": "petra",
+    "description": "Ethernet · Wake on LAN",
+    "mac": "F4:93:9F:F5:7B:CC",
+    "broadcast": "255.255.255.255:9"
+  }
+]
