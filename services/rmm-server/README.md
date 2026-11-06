@@ -1,10 +1,45 @@
 # RMM server
 
-A public, dark dashboard with authenticated Wake on LAN controls. The existing
+A public, dark dashboard with authenticated Wake on LAN and suspend controls. The existing
 Ethernet MAC belongs to **petra**, the workstation, and remains the default target.
 A collector on each machine reports CPU, RAM, temperatures, GPU/VRAM, and Ethernet
 link speed. Unavailable readings stay null. Stale telemetry does not establish
 power state, and a wake response only confirms packet transmission.
+
+## Suspend petra
+
+Run `./lab setup petra` from petra to update the dashboard and collector and enable
+the **Suspend** button beside **Wake**. Login is required for both actions.
+Suspend stays disabled unless a recent collector report advertises support.
+
+The collector runs the fixed Nushell expression `suspend`, explicitly loading
+`~/.config/nushell/config.nu` (or `$XDG_CONFIG_HOME/nushell/config.nu`). This preserves
+petra's existing lock-before-sleep behavior. The active Wayland environment is
+read from the systemd user manager when the action runs; no SSH keys or extra
+listening port are needed. The collector user must have Nushell and the existing
+suspend script installed, with permission to suspend the machine.
+
+Before requesting sleep, the collector ends its user's incoming OpenSSH login
+sessions through `loginctl terminate-session`. It checks each session's owner,
+remote flag, and `sshd` service first. This logs out those sessions and ends
+processes attached to them. The desktop, collector service, and SSH listener keep
+running, so new SSH connections work after wake. Other users' sessions and
+outgoing SSH connections are unaffected. If SSH-session cleanup fails, suspend
+is stopped and the error is reported.
+
+If petra's script fails because `petra-suspend.service` already exists, the
+collector checks `hyprctl locked`. Only an explicit `true` permits it to request
+sleep through systemd while leaving the existing locker running. Unknown or
+unlocked state stops the action. The collector never stops or restarts the locker.
+
+The private collector configuration opts in with `"allow_suspend": true`; other
+collectors remain disabled by default. Requests arrive in the next telemetry
+response, normally within five seconds. They expire after 15 seconds, are delivered
+once, and are limited to one request per 30 seconds per host. The browser confirms
+that the request was queued, not that the machine slept. Execution failures appear
+under the device's buttons after its next report, with details in
+`journalctl --user -u rmm-collector.service` on petra. Pending requests are not
+persisted across dashboard restarts. Single-sample (`-once`) runs never accept actions.
 
 ## Run on Linux ARM64
 
@@ -158,6 +193,7 @@ preview. The root `./lab run` builds from current source when creating its tmux 
 - `GET /api/health`: running build fingerprint, hostname, release ID, start time, and uptime.
 - `GET /api/hosts/{id}/history?range=1h|24h`: public CPU, RAM, CPU temperature, and per-processor power history; `__controller__` selects the dashboard host. The range defaults to `1h`.
 - `GET /api/session`: current login state and whether login is configured.
+- `POST /api/hosts/{id}/suspend`: authenticated, CSRF-protected request to suspend a connected, opted-in collector.
 - `POST /api/login`: JSON `{ "password": "…" }`; establishes a session cookie.
 - `POST /api/logout`: revokes the session and clears the cookie.
 - `POST /api/hosts/{id}/wake`: authenticated wake packet for a configured target.

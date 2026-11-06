@@ -9,6 +9,7 @@ let selectedHost = null;
 let selectedLink = null;
 let server = null;
 const waking = new Set();
+const suspending = new Set();
 const dialog = $('#login-dialog');
 async function api(path, options = {}) {
   const controller = new AbortController();
@@ -200,6 +201,11 @@ function addPowerReadings(section, processors, stale, named = false) {
   section.append(power);
 }
 function gpuHeading(name) { return name && name !== 'GPU' ? `GPU · ${name}` : 'GPU'; }
+function actionIcon(action) {
+  const icon = svg('svg', { viewBox: '0 0 24 24', width: 16, height: 16, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' });
+  icon.append(svg('path', { d: action === 'suspend' ? 'M2 17h4l-4 4h4M8 10h6l-6 6h6M15 2h7l-7 7h7' : 'M14.4 2 6 13h6l-2.4 9L18 10h-6Z' }));
+  return icon;
+}
 function render() {
   const hosts = allHosts();
   const focusKey = document.activeElement?.dataset?.focus;
@@ -276,12 +282,30 @@ function render() {
     else if (stale) detail.append(element('span', '', 'No samples received'));
     memory.append(detail);
     card.append(memory);
-    if (host.is_controller || host.can_wake === false) { container.append(card); continue; }
-    const button = element('button', 'button wake-button ' + (authenticated ? 'primary' : 'secondary'), waking.has(host.id) ? 'Sending…' : 'Wake ↗');
-    button.disabled = !authenticated || waking.has(host.id); button.dataset.focus = `wake-${host.id}`;
-    button.setAttribute('aria-label', (authenticated ? 'Wake ' : 'Log in to wake ') + displayName(host));
-    button.title = authenticated ? '' : 'Log in to wake';
-    button.addEventListener('click', () => { if (authenticated) wake(host); }); card.append(button); container.append(card);
+    if (host.is_controller || (host.can_wake === false && !host.can_suspend)) { container.append(card); continue; }
+    const actions = element('div', 'host-actions');
+    const busy = waking.has(host.id) || suspending.has(host.id);
+    const sleep = element('button', 'button secondary', suspending.has(host.id) ? 'Requesting…' : 'Suspend');
+    sleep.append(actionIcon('suspend'));
+    sleep.disabled = !authenticated || !host.can_suspend || !fresh(host) || busy;
+    sleep.dataset.focus = `suspend-${host.id}`;
+    sleep.setAttribute('aria-label', (authenticated ? 'Suspend ' : 'Log in to suspend ') + displayName(host));
+    sleep.title = !authenticated ? 'Log in to suspend' : !host.can_suspend ? 'Suspend requires an enabled, connected collector' : '';
+    sleep.addEventListener('click', () => { if (!sleep.disabled) suspendHost(host); });
+    actions.append(sleep);
+    if (host.can_wake !== false) {
+      const button = element('button', 'button ' + (authenticated ? 'primary' : 'secondary'), waking.has(host.id) ? 'Sending…' : 'Wake');
+      button.append(actionIcon('wake'));
+      button.classList.add('wake-action');
+      button.disabled = !authenticated || busy; button.dataset.focus = `wake-${host.id}`;
+      button.setAttribute('aria-label', (authenticated ? 'Wake ' : 'Log in to wake ') + displayName(host));
+      button.title = authenticated ? '' : 'Log in to wake';
+      button.addEventListener('click', () => { if (!button.disabled) wake(host); });
+      actions.append(button);
+    }
+    card.append(actions);
+    if (authenticated && t.suspend_error) card.append(element('p', 'action-error', t.suspend_error));
+    container.append(card);
   }
   if (focusKey) for (const node of document.querySelectorAll('[data-focus]')) if (node.dataset.focus === focusKey) { node.focus({ preventScroll: true }); break; }
 }
@@ -290,6 +314,12 @@ async function wake(host) {
   try { const result = await api('/api/hosts/' + encodeURIComponent(host.id) + '/wake', { method: 'POST' }); toast(result.message); }
   catch (error) { toast(error.message, true); }
   finally { waking.delete(host.id); render(); }
+}
+async function suspendHost(host) {
+  suspending.add(host.id); render();
+  try { const result = await api('/api/hosts/' + encodeURIComponent(host.id) + '/suspend', { method: 'POST' }); toast(result.message); }
+  catch (error) { toast(error.message, true); }
+  finally { suspending.delete(host.id); render(); }
 }
 $('#auth-button').addEventListener('click', async () => {
   if (!authenticated) { login(); return; }

@@ -42,7 +42,7 @@ cd "$HOME/rmm-server"
 ./rmm-server -configure-telemetry \
   -telemetry-listen "$pi_address:8081" \
   -collector-target "http://$pi_address:8081" \
-  -collector-interface "$2" -link-type tailscale >&2
+  -collector-interface "$2" -link-type tailscale -allow-suspend >&2
 tmux kill-session -t =homelab 2>/dev/null || true
 for attempt in {1..50}; do
   if [[ -z "$(ss -H -ltn 'sport = :8080')" ]]; then break; fi

@@ -30,6 +30,13 @@ RemoteSystemsTempFiles/
 
 # Generated executables
 /bin/
+/projects/desk-cube/api/hub/hub
+
+# Local runtime databases and SQLite sidecars
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
 
 # Redistributed font license (text files are otherwise ignored above)
 !services/rmm-server/web/fonts/OFL.txt

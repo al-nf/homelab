@@ -2,3 +2,4 @@
 /hosts.local.json
 .env
 /release.txt
+/tmp/

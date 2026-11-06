@@ -46,6 +46,7 @@ type receiverConfig struct {
 	Tokens map[string]string `json:"tokens"`
 }
 type collectorConfig struct {
+	AllowSuspend    bool   `json:"allow_suspend,omitempty"`
 	Target          string `json:"target"`
 	HostID          string `json:"host_id"`
 	Token           string `json:"token"`
@@ -208,6 +209,9 @@ func configureTelemetryConfig(receiverPath, collectorPath, listen, target, id, i
 		token = hex.EncodeToString(random)
 	}
 	collector.Target = target
+	if collector.HostID != id {
+		collector.AllowSuspend = false
+	}
 	collector.HostID = id
 	collector.Token = token
 	collector.LinkType = kind
@@ -273,6 +277,9 @@ func validMemory(used, total *uint64) bool {
 	return (used == nil && total == nil) || (used != nil && total != nil && *total > 0 && *used <= *total)
 }
 func validateTelemetry(t telemetry) error {
+	if len(t.SuspendError) > 256 {
+		return errors.New("suspend error is too long")
+	}
 	if len(t.Power) > 32 {
 		return errors.New("too many processor power readings")
 	}
@@ -344,9 +351,10 @@ func (a *app) telemetryHandler() http.Handler {
 		}
 		linkRates(a.readings[id], &reading, now)
 		a.readings[id] = reading
+		command := a.takeSuspendLocked(id, reading, now)
 		a.mu.Unlock()
 		a.recordHistory(id, reading)
-		writeJSON(w, 200, map[string]bool{"accepted": true})
+		writeJSON(w, 200, collectorReply{Accepted: true, Command: command})
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")

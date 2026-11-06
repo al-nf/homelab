@@ -329,6 +329,14 @@ func loadCollectorConfig(path string) (collectorConfig, error) {
 	return c, nil
 }
 func postSample(ctx context.Context, client *http.Client, c collectorConfig, reading telemetry) error {
+	return deliverSample(ctx, client, c, reading, nil)
+}
+
+func deliverSample(ctx context.Context, client *http.Client, c collectorConfig, reading telemetry, suspendError *string) error {
+	return deliverSampleWithAction(ctx, client, c, reading, suspendError, runSuspend)
+}
+
+func deliverSampleWithAction(ctx context.Context, client *http.Client, c collectorConfig, reading telemetry, suspendError *string, suspend func(context.Context) error) error {
 	if err := validateTelemetry(reading); err != nil {
 		return err
 	}
@@ -351,9 +359,27 @@ func postSample(ctx context.Context, client *http.Client, c collectorConfig, rea
 		return err
 	}
 	defer response.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("telemetry rejected (HTTP %d)", response.StatusCode)
+	}
+	var reply collectorReply
+	if err := json.NewDecoder(io.LimitReader(response.Body, 4096)).Decode(&reply); err != nil {
+		return fmt.Errorf("invalid telemetry response: %w", err)
+	}
+	if reply.Command != "" {
+		if reply.Command != "suspend" || !c.AllowSuspend || !reading.CanSuspend {
+			return errors.New("collector rejected an unsupported or disabled action")
+		}
+		if err := suspend(ctx); err != nil {
+			if suspendError != nil {
+				*suspendError = "Suspend failed. Check the collector log on this device."
+			}
+			return fmt.Errorf("suspend failed: %w", err)
+		}
+		if suspendError != nil {
+			*suspendError = ""
+		}
+		log.Print("Suspend requested through Nushell.")
 	}
 	return nil
 }
@@ -389,6 +415,7 @@ func runCollector(ctx context.Context, path string, once bool) error {
 	ticker := time.NewTicker(time.Duration(c.IntervalSeconds) * time.Second)
 	defer ticker.Stop()
 	var lastError string
+	var suspendError string
 	log.Printf("Collecting host %s on interface %s", c.HostID, c.Interface)
 	for {
 		if autoInterface {
@@ -402,13 +429,15 @@ func runCollector(ctx context.Context, path string, once bool) error {
 			}
 		}
 		reading := s.sample(ctx)
+		reading.CanSuspend = !once && c.AllowSuspend && suspendAvailable()
+		reading.SuspendError = suspendError
 		if reading.Link != nil && c.LinkType != "" {
 			reading.Link.Type = c.LinkType
 		}
 		if reading.Link != nil && reading.Link.Type == "tailscale" {
 			reading.Link.SpeedMbps = nil
 		}
-		err := postSample(ctx, client, c, reading)
+		err := deliverSample(ctx, client, c, reading, &suspendError)
 		if once {
 			if err == nil {
 				log.Print("Telemetry sample accepted.")

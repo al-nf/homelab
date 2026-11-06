@@ -4,6 +4,21 @@ A public RMM dashboard with login protected Wake on LAN controls, live telemetry
 and a network graph showing reported links and interface traffic. Plain HTML, CSS,
 and JavaScript, embedded in a Go server. Intended to run on the lab's Raspberry Pi 5.
 
+## Repository layout
+
+```text
+lab          Main command for running, deploying, and setting up services
+scripts/     Shared helpers, local commands, deployment, and device setup
+services/    RMM dashboard and job monitor
+embedded/    Current Zynq development environment and Yocto configuration
+projects/    Earlier desk-cube and pingme hardware projects
+bin/         Generated executables (ignored by Git)
+```
+
+Build caches and local runtime databases are not source files. The job monitor
+uses `services/job-monitor/jobs.db` when run from its service directory; keep that
+database locally. Its schema is tracked in `services/job-monitor/schema.sql`.
+
 ## Unified command interface
 
 Run `./lab` in a terminal for the split interface: numbered commands on the left,

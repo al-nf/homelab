@@ -39,6 +39,8 @@ type host struct {
 
 // A nil metric means no collector could report a value.
 type telemetry struct {
+	CanSuspend    bool             `json:"can_suspend,omitempty"`
+	SuspendError  string           `json:"suspend_error,omitempty"`
 	Power         []processorPower `json:"power,omitempty"`
 	Hostname      string           `json:"hostname,omitempty"`
 	CPUPercent    *float64         `json:"cpu_percent"`
@@ -62,6 +64,8 @@ type app struct {
 	sessions        map[string]session
 	attempts        []time.Time
 	lastWake        map[string]time.Time
+	lastSuspend     map[string]time.Time
+	pendingSuspend  map[string]time.Time
 	send            func(host) error
 	readings        map[string]telemetry
 	telemetryTokens map[string]string
@@ -309,6 +313,7 @@ func (a *app) handler() http.Handler {
 			Name        string    `json:"name"`
 			Description string    `json:"description"`
 			CanWake     bool      `json:"can_wake"`
+			CanSuspend  bool      `json:"can_suspend"`
 			Telemetry   telemetry `json:"telemetry"`
 			Stale       bool      `json:"stale"`
 		}
@@ -322,11 +327,12 @@ func (a *app) handler() http.Handler {
 			if reading.Hostname != "" {
 				name = reading.Hostname
 			}
-			result = append(result, publicHost{ID: h.ID, Name: name, Description: h.Description, CanWake: h.MAC != "", Telemetry: reading, Stale: stale})
+			result = append(result, publicHost{ID: h.ID, Name: name, Description: h.Description, CanWake: h.MAC != "", CanSuspend: reading.CanSuspend && !stale, Telemetry: reading, Stale: stale})
 		}
 		writeJSON(w, 200, result)
 	})
 	mux.HandleFunc("POST /api/hosts/{id}/wake", a.wake)
+	mux.HandleFunc("POST /api/hosts/{id}/suspend", a.suspend)
 	mux.HandleFunc("GET /api/hosts/{id}/history", a.hostHistory)
 	mux.HandleFunc("POST /wake", a.wake)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { fail(w, 404, "Endpoint not found.") })
@@ -362,6 +368,7 @@ func main() {
 	installCollector := flag.Bool("install-collector", false, "Enable collector autostart and automatic restart for this user")
 	historyPath := flag.String("history-db", "", "SQLite telemetry history path; defaults to history.sqlite in the dashboard state directory")
 	configureTelemetry := flag.Bool("configure-telemetry", false, "Configure telemetry transport while preserving host tokens")
+	allowSuspend := flag.Bool("allow-suspend", false, "Enable the collector's fixed Nushell suspend action during telemetry setup")
 	register := flag.Bool("register-host", false, "Add a telemetry-only host to the persistent host list")
 	collectorInterface := flag.String("collector-interface", "", "Interface to monitor on the collector, or auto to follow the route at startup")
 	linkKind := flag.String("link-type", "", "ethernet, wifi, tailscale, or other")
@@ -409,6 +416,20 @@ func main() {
 		}
 		if err := configureTelemetryConfig(*telemetryPath, *collectorPath, *listen, *target, *hostID, *collectorInterface, *linkKind, *configureTelemetry); err != nil {
 			log.Fatal(err)
+		}
+		if *allowSuspend {
+			c, err := loadCollectorConfig(*collectorPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			c.AllowSuspend = true
+			data, err := json.MarshalIndent(c, "", "  ")
+			if err != nil {
+				log.Fatal(err)
+			}
+			if err := writePrivateFile(*collectorPath, data); err != nil {
+				log.Fatal(err)
+			}
 		}
 		log.Print("Telemetry setup saved. Copy the collector configuration privately to its machine; restart the Pi dashboard.")
 		return
