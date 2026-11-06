@@ -1,0 +1,15 @@
+.direnv/
+.envrc.local
+build/
+build-*/
+downloads/
+sstate-cache/
+sources/
+hardware/
+kas/*.local.yml
+result
+result-*
+*.jou
+*.log
+.Xil/
+.kas_shell_history

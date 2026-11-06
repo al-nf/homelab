@@ -1,0 +1,28 @@
+header:
+  version: 14
+
+distro: poky
+target: core-image-minimal
+
+repos:
+  poky:
+    url: https://github.com/yoctoproject/poky.git
+    path: sources/poky
+    branch: scarthgap
+    commit: b6ae714a1d1bfae8384654a13da15996cac64712
+    layers:
+      meta:
+      meta-poky:
+      meta-yocto-bsp:
+
+env:
+  DL_DIR:
+  SSTATE_DIR:
+
+local_conf_header:
+  workspace: |
+    CONF_VERSION = "2"
+    DL_DIR = "${TOPDIR}/../downloads"
+    SSTATE_DIR = "${TOPDIR}/../sstate-cache"
+    BB_NUMBER_THREADS ?= "8"
+    PARALLEL_MAKE ?= "-j8"

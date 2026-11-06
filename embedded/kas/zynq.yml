@@ -1,0 +1,45 @@
+# Zynq software development baseline; not a bootable Cora Z7-07S BSP.
+# Supply a board-specific machine/layer before generating an SD-card image.
+header:
+  version: 14
+  includes:
+    - base.yml
+
+machine: zynq-generic
+
+repos:
+  meta-openembedded:
+    url: https://github.com/openembedded/meta-openembedded.git
+    path: sources/meta-openembedded
+    branch: scarthgap
+    commit: 2db6aece32c7f8ebf6015b468e1b4e21de072e3b
+    layers:
+      meta-oe:
+      meta-python:
+      meta-networking:
+  meta-arm:
+    url: https://git.yoctoproject.org/meta-arm
+    path: sources/meta-arm
+    branch: scarthgap
+    commit: 0a4b911d9fd63ab29c4532a907fae3282dbdcfe4
+    layers:
+      meta-arm:
+      meta-arm-toolchain:
+  meta-xilinx:
+    url: https://github.com/Xilinx/meta-xilinx.git
+    path: sources/meta-xilinx
+    branch: rel-v2025.2
+    commit: 658a3a888dceec7e2d30f32166fc009f4f91f294
+    layers:
+      meta-xilinx-core:
+
+local_conf_header:
+  zynq: |
+    XILINX_RELEASE_VERSION = "v2025.2"
+    # Build Linux/rootfs artifacts without implying a board boot configuration.
+    IMAGE_FSTYPES = "tar.gz ext4"
+    IMAGE_FSTYPES:remove = "wic.qemu-sd"
+    IMAGE_BOOT_FILES = ""
+    IMAGE_BOOT_FILES:remove = "boot.scr uImage"
+    EXTRA_IMAGEDEPENDS = ""
+    EXTRA_IMAGEDEPENDS:remove = "${UBOOT_BOOT_SCRIPT}"
